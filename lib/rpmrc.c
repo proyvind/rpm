@@ -1550,6 +1550,7 @@ static rpmRC rpmReadRC(rpmrcCtx ctx, const char * rcfiles)
 {
     ARGV_t p, globs = NULL, files = NULL;
     rpmRC rc = RPMRC_FAIL;
+    const char *rcmacrofiles = NULL;
 
     if (!ctx->pathDefaults) {
 	setDefaults();
@@ -1585,6 +1586,9 @@ static rpmRC rpmReadRC(rpmrcCtx ctx, const char * rcfiles)
     }
     rc = RPMRC_OK;
     rpmSetMachine(ctx, NULL, NULL);	/* XXX WTFO? Why bother? */
+
+    if ((rcmacrofiles = rpmGetVarArch(ctx, RPMVAR_MACROFILES, NULL)))
+	macrofiles = rcmacrofiles;
 
 exit:
     argvFree(files);
