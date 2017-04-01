@@ -840,16 +840,27 @@ static void doRpminterp(MacroBuf mb, const char * f, size_t fn, const char * g, 
     strncpy(ipname, f, fn);
     ipname[fn] = '\0';
 
-    char *modpath = alloca(sizeof("_rpminterp_") + fn + sizeof("_modpath")+1);
-    stpcpy(stpcpy(stpcpy(modpath, "_rpminterp_"), ipname), "_modpath");
-    if ((mep = findEntry(mb->mc, modpath, strlen(modpath), NULL))) {
-	me = *mep;
-	module = rpmExpand(me->body, NULL);
+
+#if WITH_LUA
+    /* lua is builtin, so don't try load it externally */
+    if (STREQ("lua", ipname, fn)) {
+	module = "";
+    } else
+#endif
+    {
+	char *modpath = alloca(sizeof("_rpminterp_") + fn + sizeof("_modpath")+1);
+	stpcpy(stpcpy(stpcpy(modpath, "_rpminterp_"), ipname), "_modpath");
+	if ((mep = findEntry(mb->mc, modpath, strlen(modpath), NULL))) {
+	    me = *mep;
+	    module = rpmExpand(me->body, NULL);
+	}
     }
     if (module) {
 	interp = rpminterpLoad(ipname, module);
 	_free(module);
-    }
+    } else if (STREQ("lua", ipname, fn)) {
+	rpmlog(RPMLOG_ERR, _("<%s> scriptlet support not built in\n"), ipname);
+
     if (interp) {
 	char *scriptbuf = alloca(gn + 1);
 	char *printbuf;
@@ -869,7 +880,8 @@ static void doRpminterp(MacroBuf mb, const char * f, size_t fn, const char * g, 
 	    mbAppendStr(mb, printbuf);
 	    free(printbuf);
 	}
-    }
+    } else
+	mb->error = 1;
 }
 
 /**
