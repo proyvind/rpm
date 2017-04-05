@@ -67,6 +67,7 @@ fprintf(stderr, "==> %s(initialized:%d, flags: 0x%.10x)\n", __FUNCTION__, initia
 	    fprintf(stderr, "==========\n%s\n==========\n", s);
 	rpmpythonRun(s, NULL);
 	free(s);
+    }
 
     return rc;
 }
