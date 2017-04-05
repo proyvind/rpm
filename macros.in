@@ -1193,7 +1193,7 @@ end}
 # Python 3 has additional suffix in front of just .so for extensions
 # if built with distutils (setup.py), while using .so if built with
 # make, so need to support both
-%_rpminterp_python_modpath %{python_sitearch}/rpm}/_rpm*.so
+%_rpminterp_python_modpath %{python_sitearch}/rpm/_rpm*.so
 
 # Embedded python interpreter initialization commands
 %_rpminterp_python_init	import rpm; from rpm.generate import pyspec \
