@@ -13,11 +13,11 @@ typedef	enum rpminterpFlag_e {
 } rpminterpFlag;
 
 struct rpminterp_s {
-	const char *name;
-	rpmRC (*init) (ARGV_t *av, rpminterpFlag flags);
-	void (*free) (void);
-	rpmRC (*run) (const char * str, char ** resultp);
-	void *h;
+	const char	*name;
+	rpmRC 		(*init) (ARGV_t *av, rpminterpFlag flags);
+	void 		(*free) (void);
+	rpmRC		(*run) (const char * str, char ** resultp);
+	void		*h;
 };
 
 typedef const struct rpminterp_s * rpminterp;
