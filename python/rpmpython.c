@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <Python.h>
 #if PY_VERSION_HEX < 0x03050000 && PY_VERSION_HEX >= 0x03000000
 #include <fileutils.h>
@@ -32,14 +33,12 @@ static rpmRC rpmpythonInit(ARGV_t * argvp, rpminterpFlag flags)
 {
     ARGV_t argv = argvp ? *argvp : NULL;
     rpmRC rc = RPMRC_OK;
-    bool initalized = Py_IsInitialized();
+    bool initialized = Py_IsInitialized();
 
 if (_rpminterp_debug)
-fprintf(stderr, "==> %s(0x%.10x)\n", __FUNCTION__, flags);
+fprintf(stderr, "==> %s(initialized:%d, flags: 0x%.10x)\n", __FUNCTION__, initialized, flags);
 
-if (_rpminterp_debug)
-fprintf(stderr, "==> %s(initalized:%d)\n", __FUNCTION__, initialized);
-    if (!initalized) {
+    if (!initialized) {
 #if PY_VERSION_HEX >= 0x03000000
 	Py_SetStandardStreamEncoding("UTF-8", "strict");
 #endif
@@ -69,13 +68,6 @@ fprintf(stderr, "==> %s(initalized:%d)\n", __FUNCTION__, initialized);
 	rpmpythonRun(s, NULL);
 	free(s);
 
-#if PY_VERSION_HEX >= 0x03000000
-	if(wav) {
-	    for (int i = 0; i < ac; i++)
-		free(wav[i]);
-	}
-#endif
-    }
     return rc;
 }
 
@@ -142,10 +134,7 @@ fprintf(stderr, "==> %s(%s,%p)\n", __FUNCTION__, str, resultp);
 		PyErr_Clear();
 	}
 
-if (_rpminterp_debug)
-fprintf(stderr, "==> %s(%s)\n%s\n", __FUNCTION__, str, *resultp);
 	Py_XDECREF(v);
-
 	free(val);
 	rc = RPMRC_OK;
     }
