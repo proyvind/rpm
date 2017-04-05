@@ -13,11 +13,14 @@ extern int _rpminterp_debug;
 
 #if PY_VERSION_HEX >= 0x03000000
 static const char _rpmpythonI_init[] =	"from io import StringIO;"
-					"sys.stdout = StringIO();";
+					"sys.stdout = stdout = StringIO();";
 #else
 static const char _rpmpythonI_init[] =	"from cStringIO import StringIO;"
-					"sys.stdout = StringIO();";
+					"sys.stdout = stdout = StringIO();";
 #endif
+
+static bool initialized = false;
+static bool underrpm = false;
 
 static void rpmpythonFree(void);
 static rpmRC rpmpythonInit(ARGV_t * av, uint32_t flags);
@@ -33,16 +36,19 @@ static rpmRC rpmpythonInit(ARGV_t * argvp, rpminterpFlag flags)
 {
     ARGV_t argv = argvp ? *argvp : NULL;
     rpmRC rc = RPMRC_OK;
-    bool initialized = Py_IsInitialized();
 
 if (_rpminterp_debug)
 fprintf(stderr, "==> %s(initialized:%d, flags: 0x%.10x)\n", __FUNCTION__, initialized, flags);
 
-    if (!initialized) {
+    if (initialized)
+	return rc;
+
+    if (!Py_IsInitialized()) {
 #if PY_VERSION_HEX >= 0x03000000
 	Py_SetStandardStreamEncoding("UTF-8", "strict");
 #endif
 	Py_Initialize();
+	underrpm = true;
     }
 
     if (!(flags & RPMINTERP_NO_INIT)) {
@@ -65,9 +71,11 @@ fprintf(stderr, "==> %s(initialized:%d, flags: 0x%.10x)\n", __FUNCTION__, initia
 	}
 	if (_rpminterp_debug)
 	    fprintf(stderr, "==========\n%s\n==========\n", s);
-	rpmpythonRun(s, NULL);
+	rc = rpmpythonRun(s, NULL);
 	free(s);
     }
+
+    initialized = true;
 
     return rc;
 }
@@ -107,11 +115,17 @@ fprintf(stderr, "==> %s(%s,%p)\n", __FUNCTION__, str, resultp);
 	{
 	    return rpmpythonRunFile(str, resultp);
 	}
-	char *val = strdup(str);
 	PyCompilerFlags cf = { 0 };
 	PyObject * m = PyImport_AddModule("__main__");
 	PyObject * d = (m ? PyModule_GetDict(m) : NULL);
-	PyObject * v = (m ? PyRun_StringFlags(val, Py_file_input, d, d, &cf) : NULL);
+
+	if (!underrpm && resultp != NULL) {
+	    PyObject * pre = (m ? PyRun_StringFlags("sys.stdout = stdout", Py_file_input, d, d, &cf) : NULL);
+	    if (pre == NULL)
+		PyErr_Print();
+	    Py_XDECREF(pre);
+	}
+	PyObject * v = (m ? PyRun_StringFlags(str, Py_file_input, d, d, &cf) : NULL);
 
 	if (v == NULL) {
 	    PyErr_Print();
@@ -135,10 +149,16 @@ fprintf(stderr, "==> %s(%s,%p)\n", __FUNCTION__, str, resultp);
 		PyErr_Clear();
 	}
 
+	if (!underrpm && resultp != NULL) {
+	    PyObject * post = (m ? PyRun_StringFlags("sys.stdout = sys.__stdout__", Py_file_input, d, d, &cf) : NULL);
+	    if (post == NULL)
+		PyErr_Print();
+	    Py_XDECREF(post);
+	}
 	Py_XDECREF(v);
-	free(val);
 	rc = RPMRC_OK;
     }
+
     return rc;
 }
 
