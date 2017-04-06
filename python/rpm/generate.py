@@ -23,6 +23,7 @@ from subprocess import Popen, PIPE
 from shutil import rmtree
 from time import gmtime, strftime
 from locale import resetlocale, setlocale, LC_TIME
+import textwrap
 
 import json
 try:
@@ -197,10 +198,13 @@ class _bdist_rpm(bdist_rpm):
             spec_file.append('BuildRequires:\t' +
                              " ".join(self.build_requires))
 
+        description = self.distribution.get_long_description().strip().split("\n")
+        for i in range(0,len(description)):
+            description[i] = textwrap.fill(description[i], 79)
         spec_file.extend([
             '',
             '%description',
-            self.distribution.get_long_description().strip()
+            "\n".join(description)
             ])
 
 
