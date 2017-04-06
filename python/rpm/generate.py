@@ -4,6 +4,7 @@ from distutils.command import sdist
 from distutils.sysconfig import get_config_var
 from distutils.filelist import FileList
 import distutils.core
+from tempfile import mkstemp
 
 import os, sys
 from types import *
@@ -247,8 +248,7 @@ class _bdist_rpm(bdist_rpm):
         spec_file.append(os.path.join(site_pkgs, name.replace('-', '_') + '*.egg-info'))
 
         if changelog:
-
-            packager = rpm.expandMacro('%{?packagerr}%{?!packagerr:Unnamed Loser <foo@bar.cum>}')
+            packager = rpm.expandMacro('%{?packager}%{?!packager:Unnamed Loser <foo@bar.cum>}')
 
             setlocale(LC_TIME, locale="C")
             spec_file.extend([
@@ -321,7 +321,8 @@ def pyspec(module, version, release="1", suffix="tar.gz", python=rpm.expandMacro
     specfile = specdist._make_spec_file(suffix, changelog=changelog)
 
     lines = "\n".join(specfile)
-    if rpm.expandMacro("%{?_dont_expand_spec_macros}"):
-        print(lines),
-    else:
-        print(rpm.expandMacro(lines)),
+    tmp = mkstemp(suffix=".spec", prefix=module, dir=rpm.expandMacro("%{_tmppath}"),text=True)
+    os.write(tmp[0], bytes(lines.encode("utf-8")))
+    spec = rpm.spec(tmp[1])
+    os.unlink(tmp[1])
+    print(spec.parsed)
