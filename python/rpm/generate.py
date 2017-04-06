@@ -24,11 +24,45 @@ from shutil import rmtree
 from time import gmtime, strftime
 from locale import resetlocale, setlocale, LC_TIME
 
+import json
+try:
+    from urllib.request import urlopen
+    from urllib.error import HTTPError, URLError
+except ImportError:
+    from urllib2 import urlopen, HTTPError, URLError
+
 def _show_warning(message, category=Warning, filename=None, lineno=0, file=None, line=None):
     return
 
+# swiped from Patchwork Buildroot development and adapted to our purpose
+def _pypi_source_url(pkg_name, version, ext):
+    '''Get package release metadata from PyPI'''
+
+    metadata_url = 'https://pypi.python.org/pypi/{pkg}/json'.format(pkg=pkg_name)
+    try:
+        pkg_json = urlopen(metadata_url).read().decode()
+        ver_metadata = json.loads(pkg_json)['releases'][version]
+    except:
+        ver_metadata = None
+
+    br_pypi_url = None
+    full_pkg_name = '{name}-{version}.{ext}'.format(name=pkg_name,
+                                                version=version,
+                                                ext=ext)
+
+    if ver_metadata:
+        for download_url in ver_metadata:
+            if 'bdist' in download_url['packagetype']:
+                continue
+
+            if download_url['url'].endswith(full_pkg_name):
+                br_pypi_url = download_url['url']+"#"+download_url['md5_digest']
+                break
+
+    return (full_pkg_name, br_pypi_url)
+
 class _bdist_rpm(bdist_rpm):
-    def _make_spec_file(self, suffix, changelog):
+    def _make_spec_file(self, url, changelog):
         """Generate the text of an RPM spec file and return it as a
         list of strings (one per line).
         """
@@ -57,11 +91,12 @@ class _bdist_rpm(bdist_rpm):
             'Version:\t' + version,
             'Release:\t' + release,
             'Summary:\t' + summary,
-            'Source0:\thttp://pypi.python.org/packages/source/%c/%%{module}/%%{module}-%%{version}.' % name[0],
+            'Source0:\t' + url,
             ])
         # XXX yuck! this filename is available from the "sdist" command,
         # but only after it has run: and we create the spec file before
         # running "sdist", in case of --spec-only.
+        """
         if suffix == "zip":
             spec_file[-1] += suffix
         elif sdist.formats and 'xztar' in sdist.formats:
@@ -70,6 +105,7 @@ class _bdist_rpm(bdist_rpm):
             spec_file[-1] += 'tar.bz2'
         else:
             spec_file[-1] += 'tar.gz'
+            """
 
         license = self.distribution.get_license()
         if license == "UNKNOWN":
@@ -275,8 +311,14 @@ def pyspec(module, version, release="1", suffix="tar.gz", python=rpm.expandMacro
     if os.path.exists(builddir):
         rmtree(builddir)
 
-    filename = "%s-%s.%s" % (module, version, suffix)
-    uncompress = Popen(rpm.expandMacro("%{uncompress: %{_sourcedir}/" + filename + "}").split(), stdout=PIPE)
+    filename, url = _pypi_source_url(module, version, suffix)
+    filepath = rpm.expandMacro("%{_sourcedir}/" + filename)
+    if not (os.path.exists(filepath) and os.path.isfile(filepath) and os.stat(filepath).st_size != 0):
+        download = urlopen(url)
+        f = open(filepath, "wb")
+        f.write(download.read())
+        f.close()
+    uncompress = Popen(rpm.expandMacro("%{uncompress: " + filepath + "}").split(), stdout=PIPE)
     if suffix == "zip":
         uncompress.wait()
     else:
@@ -327,7 +369,7 @@ def pyspec(module, version, release="1", suffix="tar.gz", python=rpm.expandMacro
     specdist.finalize_options()
     specdist.finalize_package_data()
     specdist.distribution = dist
-    specfile = specdist._make_spec_file(suffix, changelog=changelog)
+    specfile = specdist._make_spec_file(url, changelog=changelog)
 
     lines = "\n".join(specfile)
     tmp = NamedTemporaryFile(mode="w", suffix=".spec", prefix=module, dir=rpm.expandMacro("%{_tmppath}"), delete=True)
