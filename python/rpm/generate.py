@@ -256,9 +256,9 @@ class _bdist_rpm(bdist_rpm):
             spec_file.append('%doc ' + doc_file)
 
         if self.distribution.has_ext_modules():
-            site_pkgs = '%{py_platsitedir}'
+            site_pkgs = '%{python_sitearch}'
         else:
-            site_pkgs = '%{py_puresitedir}'
+            site_pkgs = '%{python_sitelib}'
         if self.distribution.has_scripts():
             for script in self.distribution.scripts:
                 if type(script) == str:
