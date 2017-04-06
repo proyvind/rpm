@@ -4,7 +4,7 @@ from distutils.command import sdist
 from distutils.sysconfig import get_config_var
 from distutils.filelist import FileList
 import distutils.core
-from tempfile import mkstemp
+from tempfile import NamedTemporaryFile
 
 import os, sys
 from types import *
@@ -321,8 +321,9 @@ def pyspec(module, version, release="1", suffix="tar.gz", python=rpm.expandMacro
     specfile = specdist._make_spec_file(suffix, changelog=changelog)
 
     lines = "\n".join(specfile)
-    tmp = mkstemp(suffix=".spec", prefix=module, dir=rpm.expandMacro("%{_tmppath}"),text=True)
-    os.write(tmp[0], bytes(lines.encode("utf-8")))
-    spec = rpm.spec(tmp[1])
-    os.unlink(tmp[1])
-    print(spec.parsed)
+    tmp = NamedTemporaryFile(mode="w", suffix=".spec", prefix=module, dir=rpm.expandMacro("%{_tmppath}"), delete=True)
+    tmp.write(lines)
+    tmp.flush()
+    spec = rpm.spec(tmp.name)
+    tmp.close()
+    sys.stdout.write(spec.parsed)
