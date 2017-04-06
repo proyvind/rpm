@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright 2016-2017 Per Øyvind Karlsen <proyvind@moondrake.org>
+#
+# This program is free software. It may be redistributed and/or modified under
+# the terms of the LGPL version 2.1 (or later).
+#
+# Runtime python package generator for use with embedded python interpreter
+
 import distutils.dist
 from distutils.command.bdist_rpm import bdist_rpm
 from distutils.command import sdist
