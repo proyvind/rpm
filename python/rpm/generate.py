@@ -220,16 +220,15 @@ class _bdist_rpm(bdist_rpm):
             verify_script = None
 
         if rpm.expandMacro("%{python_version}") >= "3.0":
-            smp = " %{_smp_mflags}"
+            smp = "%{_smp_mflags}"
         else:
             smp = ""
 
         script_options = [
             ('prep', 'prep_script', "%setup -qDTn %{module}-%{version}"),
-            ('build', 'build_script', "%{__python} setup.py build"+smp),
+            ('build', 'build_script', "CFLAGS='%{optflags}' %{__python} %{py_setup} %{?py_setup_args} build "+smp+" --executable='%{__python} %{?py_shbang_opts}%{?!py_shbang_opts:-s}'"),
             ('install', 'install_script',
-             ("%{__python} setup.py install "
-              "--root=%{buildroot}")),
+             ("CFLAGS='%{optflags}' %{__python} %{py_setup} %{?py_setup_args} install -O1 --skip-build --root %{buildroot}")),
             ('check', 'verify_script', verify_script),
             ('pre', 'pre_install', None),
             ('post', 'post_install', None),
