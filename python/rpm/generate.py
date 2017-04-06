@@ -335,4 +335,15 @@ def pyspec(module, version, release="1", suffix="tar.gz", python=rpm.expandMacro
     tmp.flush()
     spec = rpm.spec(tmp.name)
     tmp.close()
-    sys.stdout.write(spec.parsed)
+    output = ""
+    lines = spec.parsed.split("\n")
+    emptyheader = True
+    for line in lines:
+        if emptyheader:
+            if len(line) > 0:
+                emptyheader = False
+            else:
+                continue
+        if "UNKNOWN" not in line:
+            output += "%s\n" % line
+    sys.stdout.write(output.rstrip("\n"))
