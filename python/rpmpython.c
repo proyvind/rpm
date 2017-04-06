@@ -119,6 +119,10 @@ fprintf(stderr, "==> %s(%s,%p)\n", __FUNCTION__, str, resultp);
 	PyObject * m = PyImport_AddModule("__main__");
 	PyObject * d = (m ? PyModule_GetDict(m) : NULL);
 
+	/* in order for %{python:...} to work from python itself, we need to
+	 * switch back and forth between output redirection to StringIO buffer
+	 * and stdout.
+	 */
 	if (!underrpm && resultp != NULL) {
 	    PyObject * pre = (m ? PyRun_StringFlags("sys.stdout = stdout", Py_file_input, d, d, &cf) : NULL);
 	    if (pre == NULL)
