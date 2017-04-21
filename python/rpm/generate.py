@@ -454,7 +454,7 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
 
     egginfo = "PKG-INFO"
     if rc == 0:
-        for line in output.split("\n"):
+        for line in output.decode().split("\n"):
             if ".egg-info/PKG-INFO" in line:
                 for text in line.split():
                     if os.path.exists(text):
