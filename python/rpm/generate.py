@@ -241,7 +241,7 @@ class _bdist_rpm(bdist_rpm):
         build_requires = []
         if buildrequires:
             if self.distribution.has_ext_modules():
-                build_requires.append('python-devel')
+                build_requires.append('pkgconfig(python-%{python_version})')
             # Ugly, but should mostly work... :p
             if 'setuptools' in str(self.distribution.__dict__) or \
                     'setuptools' in str(sdist.__dict__):
