@@ -1200,11 +1200,6 @@ expandMacro(MacroBuf mb, const char *src, size_t slen)
 	    continue;
 	}
 
-	if (f[fn] == ':' && doRpminterp(mb, f, fn, g, gn) != RPMRC_NOTFOUND) {
-	    s = se;
-	    continue;
-	}
-
 	/* XXX necessary but clunky */
 	if (STREQ("basename", f, fn) ||
 	    STREQ("dirname", f, fn) ||
@@ -1222,6 +1217,11 @@ expandMacro(MacroBuf mb, const char *src, size_t slen)
 	{
 	    /* FIX: verbose may be set */
 	    doFoo(mb, negate, f, fn, g, gn);
+	    s = se;
+	    continue;
+	}
+
+	if (f[fn] == ':' && doRpminterp(mb, f, fn, g, gn) != RPMRC_NOTFOUND) {
 	    s = se;
 	    continue;
 	}
