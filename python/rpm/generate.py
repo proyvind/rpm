@@ -130,7 +130,7 @@ class _bdist_rpm(bdist_rpm):
             'postun' : None,
     }
 
-    def _make_spec_file(self, url, description, changelog, _specfile, first):
+    def _make_spec_file(self, url, description, changelog, buildrequires, _specfile, first):
         """Generate the text of an RPM spec file and return it as a
         list of strings (one per line).
         """
@@ -239,18 +239,20 @@ class _bdist_rpm(bdist_rpm):
                 spec_file.append('%s: %s' % (field, val))
 
         build_requires = []
-        if self.distribution.has_ext_modules():
-            build_requires.append('python-devel')
-        # Ugly, but should mostly work... :p
-        if 'setuptools' in str(self.distribution.__dict__) or 'setuptools' in str(sdist.__dict__):
-            build_requires.append('python-setuptools')
-        if build_requires:
-            spec_file.append('BuildRequires:\t' +
-                             " ".join(build_requires))
+        if buildrequires:
+            if self.distribution.has_ext_modules():
+                build_requires.append('python-devel')
+            # Ugly, but should mostly work... :p
+            if 'setuptools' in str(self.distribution.__dict__) or \
+                    'setuptools' in str(sdist.__dict__):
+                build_requires.append('python-setuptools')
+            if build_requires:
+                spec_file.append('BuildRequires:\t' +
+                                 " ".join(build_requires))
 
-        if self.build_requires:
-            spec_file.append('BuildRequires:\t' +
-                             " ".join(self.build_requires))
+            if self.build_requires:
+                spec_file.append('BuildRequires:\t' +
+                                 " ".join(self.build_requires))
 
         descr = self.distribution.get_long_description().strip().split("\n")
         if descr[0] == "UNKNOWN":
@@ -378,7 +380,8 @@ class _bdist_rpm(bdist_rpm):
         return spec_file
 
 def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
-        suffix=None, python=rpm.expandMacro("%{__python}"), changelog=False):
+        suffix=None, python=rpm.expandMacro("%{__python}"), buildrequires=True,
+        changelog=False):
     # if no %_specfile macro, we're not parsing a spec file
     _specfile = rpm.expandMacro("%{?_specfile}")
     # interpreter macro gets expanded twice in preamble, bug..?
@@ -485,7 +488,7 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
     specdist.finalize_options()
     specdist.finalize_package_data()
     specdist.distribution = dist
-    specfile = "\n".join(specdist._make_spec_file(url, description, changelog, _specfile, first))
+    specfile = "\n".join(specdist._make_spec_file(url, description, changelog, buildrequires, _specfile, first))
 
     if _specfile:
         for line in orig_specfile:
