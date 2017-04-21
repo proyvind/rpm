@@ -126,11 +126,11 @@ class _bdist_rpm(bdist_rpm):
             'check': None,
             'pre' : None,
             'post' : None,
-            'preun' :  None,
+            'preun' : None,
             'postun' : None,
     }
 
-    def _make_spec_file(self, url, description, changelog):
+    def _make_spec_file(self, url, description, changelog, _specfile, first):
         """Generate the text of an RPM spec file and return it as a
         list of strings (one per line).
         """
@@ -254,17 +254,17 @@ class _bdist_rpm(bdist_rpm):
 
         descr = self.distribution.get_long_description().strip().split("\n")
         if descr[0] == "UNKNOWN":
-            if description and not rpm.expandMacro("%{?__firstpass}"):
+            if description and first:
                 rpm.expandMacro(
                 "%{warn:Warning: Metadata lacks long_description used for %%description\n"
                 "falling back to short description used for summary tag.\n"
                 "You might wanna disable auto-generated description with description=False\n"
                 "and specify it yourself.\n}")
             descr[0] = self.distribution.get_description().strip()
-        elif not description and not rpm.expandMacro("%{?__firstpass}"):
+        elif not description and first:
             rpm.expandMacro(
                 "%{warn:Warning: Not using long_description for %%description despite "
-                "being provided by metadata.\n}")
+                "provided by metadata.\n}")
 
         if descr[0][-1] != ".":
             descr[0] += "."
@@ -288,7 +288,7 @@ class _bdist_rpm(bdist_rpm):
         # are just text that we drop in as-is.  Hmmm.
 
 
-        if not rpm.expandMacro("%{?__firstpass}"):
+        if first:
             if 'test_suite' in self.distribution.__dict__ and self.distribution.test_suite:
                 self.script_options["check"] = "%{__python} setup.py test"
 
@@ -299,9 +299,10 @@ class _bdist_rpm(bdist_rpm):
                     smp += "128"
                 self.script_options["build"] = self.script_options["build"].replace("build ", "build %s "% smp)
 
-            autopatch = rpm.expandMacro("%autopatch").lstrip().rstrip().replace("\n\n", "\n")
-            if autopatch:
-                self.script_options["prep"] += "\n" + autopatch
+            if _specfile:
+                autopatch = rpm.expandMacro("%autopatch").strip().replace("\n\n", "\n")
+                if autopatch:
+                    self.script_options["prep"] += "\n" + autopatch
 
         for script in ('prep', 'build', 'install', 'check', 'pre', 'post', 'preun', 'postun'):
             # Insert contents of file referred to, if no file is referred to
@@ -377,15 +378,20 @@ class _bdist_rpm(bdist_rpm):
         return spec_file
 
 def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
-        suffix=None, python=rpm.expandMacro("%{__python}"), description=True,
-        prep=True, build=True, install=True, check=True, files=True, changelog=False):
-    filename, version, url, md5_digest = _pypi_source_url(module, version, suffix)
+        suffix=None, python=rpm.expandMacro("%{__python}"), changelog=False):
+    # if no %_specfile macro, we're not parsing a spec file
+    _specfile = rpm.expandMacro("%{?_specfile}")
+    # interpreter macro gets expanded twice in preamble, bug..?
+    first = _specfile and not rpm.expandMacro("%{?__firstpassed}")
+    if first:
+        rpm.addMacro("__firstpassed", "1")
 
+    filename, version, url, md5_digest = _pypi_source_url(module, version, suffix)
     _builddir = rpm.expandMacro("%{_builddir}")
     os.chdir(_builddir)
     builddir = "%s-%s" % (module, version)
 
-    if not rpm.expandMacro("%{?__firstpass}"):
+    if first:
         if os.path.exists(builddir):
             rmtree(builddir)
 
@@ -422,7 +428,7 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
     os.chdir(builddir)
 
     sys.path.append(os.path.join(_builddir,builddir))
-    sys.argv = [rpm.expandMacro("%{__python}"), "setup.py"]
+    sys.argv = [python, "setup.py"]
     try:
         dist = distutils.core.run_setup(sys.argv[1], stop_after="config")
     except RuntimeError:
@@ -452,6 +458,15 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
                         egginfo = text
                         break
 
+    description = True
+    if _specfile:
+        f = open(_specfile, "r")
+        orig_specfile = f.readlines()
+        f.close()
+        for line in orig_specfile:
+            if line.strip() == "%description":
+                description = False
+
     distmeta = distutils.dist.DistributionMetadata(path=egginfo)
     distmeta.keywords = {"name" : module, "version" : version}
     dist.version = version
@@ -470,45 +485,38 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
     specdist.finalize_options()
     specdist.finalize_package_data()
     specdist.distribution = dist
-    specfile = specdist._make_spec_file(url, description=description, changelog=changelog)
+    specfile = "\n".join(specdist._make_spec_file(url, description, changelog, _specfile, first))
 
-    lines = "\n".join(specfile)
+    if _specfile:
+        for line in orig_specfile:
+            line = line.strip()
+            if line == "%prep":
+                specfile = specfile.replace("\n%%prep\n%s\n" % specdist.script_options["prep"], "")
+            elif line == "%build":
+                specfile = specfile.replace("\n%%build\n%s\n" % specdist.script_options["build"], "")
+            elif line == "%install":
+                specfile = specfile.replace("\n%%install\n%s\n" % specdist.script_options["install"], "")
+            elif line == "%check" and specdist.script_options["check"]:
+                specfile = specfile.replace("\n%%check\n%s\n" % specdist.script_options["check"], "")
+            elif line == "%files":
+                specfile = specfile.replace("\n%%files\n%s" % str("\n".join(specdist.files)), "")
+
     tmp = NamedTemporaryFile(mode="w", suffix=".spec", prefix=module, dir=rpm.expandMacro("%{_tmppath}"), delete=True)
-    tmp.write(lines)
+    tmp.write(specfile)
     tmp.flush()
-
-    rpm.addMacro("__firstpass", "1")
 
     spec = rpm.spec(tmp.name)
     tmp.close()
     output = ""
+
     parsed = spec.parsed
 
-    # XXX: %_specfile would make it possible to automatically detect without
-    #      having to pass individual arguments for each section...
-    if not description:
+    if _specfile and not description:
         parsed = parsed.replace("\n%%description\n%s\n" % str("\n".join(specdist.description)),"")
 
-    if not prep:
-        parsed = parsed.replace("\n%%prep\n%s\n" % rpm.expandMacro(specdist.script_options["prep"]), "")
-
-    if not build:
-        parsed = parsed.replace("\n%%build\n%s\n" % rpm.expandMacro(specdist.script_options["build"]), "")
-
-    if not install:
-        parsed = parsed.replace("\n%%install\n%s\n" % rpm.expandMacro(specdist.script_options["install"]), "")
-
-    if not check:
-        if specdist.script_options["check"]:
-            parsed = parsed.replace("\n%%check\n%s\n" % rpm.expandMacro(specdist.script_options["check"]), "")
-
-    if not files:
-        parsed = parsed.replace("\n%%files\n%s" % rpm.expandMacro(str("\n".join(specdist.files))), "")
-
-    lines = parsed.split("\n")
     emptyheader = True
     preamble = True
-    for line in lines:
+    for line in parsed.split("\n"):
         if emptyheader:
             if len(line) > 0:
                 emptyheader = False
