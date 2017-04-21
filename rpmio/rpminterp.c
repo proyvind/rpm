@@ -12,8 +12,8 @@
 int _rpminterp_debug = 0;
 
 struct rpminterp_handle_s {
-	rpminterp interp;
-	void *h;
+    rpminterp interp;
+    void *h;
 };
 
 static void rpminterpFree(int argc, void *p) {
