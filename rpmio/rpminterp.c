@@ -25,7 +25,6 @@ static void rpminterpFree(int argc, void *p) {
 	rpmlog(RPMLOG_WARNING, "Error closing rpminterp \"%s\": %s", handle->interp->name, dlerror());
 
     free(handle);
-
 }
 
 rpminterp rpminterpLoad(const char* name, const char *modpath) {
