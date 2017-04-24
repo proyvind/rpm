@@ -302,7 +302,7 @@ class _bdist_rpm(bdist_rpm):
                 self.script_options["build"] = self.script_options["build"].replace("build ", "build %s "% smp)
 
             if _specfile:
-                autopatch = rpm.expandMacro("%autopatch").strip().replace("\n\n", "\n")
+                autopatch = rpm.expandMacro("%autopatch %{?pnum:-p%{pnum}}%{!?pnum:-p1}").strip().replace("\n\n", "\n")
                 if autopatch:
                     self.script_options["prep"] += "\n" + autopatch
 
