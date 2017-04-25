@@ -817,6 +817,47 @@ static void setFileState(rpmfs fs, int i)
     }
 }
 
+static int createGhosts(rpmfiles files, rpmpsm psm, rpmfs fs, const char *suffix) {
+    int rc = 0;
+    char *fpath = NULL;
+    struct stat sb;
+    rpmFileAction action = FA_TOUCH;
+    rpmfi fi = rpmfilesIter(files, RPMFI_ITER_FWD);
+
+    while (rpmfiNext(fi) >= 0) {
+	if ((rpmfiFFlags(fi) & RPMFILE_GHOST) &&
+		(strcmp(rpmfiFUser(fi), "root") != 0 ||
+		 strcmp(rpmfiFGroup(fi), "root") != 0)) {
+	    rc = rpmfiStat(fi, 1, &sb);
+
+	    if (rc)
+		break;
+
+	    if (S_ISREG(sb.st_mode)) {
+		fpath = fsmFsPath(fi, suffix);
+
+		fsmDebug(fpath, action, &sb);
+
+		setFileState(fs, rpmfiFX(fi));
+
+		rc = expandRegular(fi, fpath, psm, 1, 1);
+		if (!rc && !getuid())
+		    rc = fsmChown(fpath, sb.st_mode, sb.st_uid, sb.st_gid);
+		if (!rc)
+		    rc = fsmChmod(fpath, sb.st_mode);
+		if (!rc)
+		    rc = fsmCommit(&fpath, fi, action, suffix);
+
+		_free(fpath);
+	    }
+	}
+    }
+
+    rpmfiFree(fi);
+
+    return rc;
+}
+
 int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
               rpmpsm psm, char ** failedFile)
 {
@@ -974,6 +1015,8 @@ int rpmPackageFilesInstall(rpmts ts, rpmte te, rpmfiles files,
 				  sb.st_mode, action, rc);
 	fpath = _free(fpath);
     }
+
+    rc = createGhosts(files, psm, fs, tid);
 
     rpmswAdd(rpmtsOp(ts, RPMTS_OP_UNCOMPRESS), fdOp(payload, FDSTAT_READ));
     rpmswAdd(rpmtsOp(ts, RPMTS_OP_DIGEST), fdOp(payload, FDSTAT_DIGEST));
