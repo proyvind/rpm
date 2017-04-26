@@ -273,6 +273,15 @@ class _bdist_rpm(bdist_rpm):
             descr[0] += "."
 
         for i in range(0,len(descr)):
+            # no way of escaping comments in %description, so we add a '\' in
+            # front of, despite that it not actually escapes, but rather
+            # just prefixes, ie. '\#', best compromise to come up with for now....
+            if descr[i].lstrip().startswith("#"):
+                idx = descr[i].index("#")
+                if idx == 0:
+                    descr[i] = "\\"+descr[i]
+                else:
+                    descr[i] = descr[i][0:idx-1] + "\\" + descr[i][idx:]
             descr[i] = textwrap.fill(descr[i], 79)
 
         self.description = descr
