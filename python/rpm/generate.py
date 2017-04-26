@@ -331,7 +331,10 @@ class _bdist_rpm(bdist_rpm):
         for license_file in self.license_files:
             self.files.append('%license ' + license_file)
         for doc_file in self.doc_files:
-            self.files.append('%doc ' + doc_file)
+            if doc_file in license_names and doc_file not in self.license_files:
+                self.files.append('%license ' + doc_file)
+            else:
+                self.files.append('%doc ' + doc_file)
 
         if self.distribution.has_ext_modules():
             site_pkgs = '%{python_sitearch}'
