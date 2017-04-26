@@ -510,7 +510,7 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
     parsed = spec.parsed
 
     if _specfile and not description:
-        parsed = parsed.replace("\n%%description\n%s\n" % str("\n".join(specdist.description)),"")
+        parsed = parsed.replace("\n%%description\n%s\n" % spec.sourceHeader[rpm.RPMTAG_DESCRIPTION], "")
 
     emptyheader = True
     preamble = True
