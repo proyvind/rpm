@@ -27,21 +27,9 @@ import textwrap
 import hashlib
 
 import json
-try:
-    from urllib.request import urlopen
-    from urllib.error import HTTPError, URLError
-except ImportError:
-    from urllib2 import urlopen, HTTPError, URLError
 
 def _show_warning(message, category=Warning, filename=None, lineno=0, file=None, line=None):
     return
-
-import json
-try:
-    from urllib.request import urlopen
-    from urllib.error import HTTPError, URLError
-except ImportError:
-    from urllib2 import urlopen, HTTPError, URLError
 
 _definedTags = {}
 
@@ -54,6 +42,18 @@ def _tag(tagname, value):
         else:
             _definedTags[tagname] = False
     return value
+
+def _urlhelper(url, filename=None):
+    if not filename:
+        filename = "-"
+
+    urlhelper = "%s %s %s" % (rpm.expandMacro("%{_urlhelper}"), filename, url)
+    download = Popen(urlhelper.split(), stdout=PIPE, stderr=PIPE)
+    out, err = download.communicate()
+    rc = download.wait()
+    if rc:
+        rpm.log(rpm.RPMLOG_ERR, "Download failed\n%s\nrc %d out: %s err: %s\n" % (urlhelper, rc, out, err))
+    return (rc, out, err)
 
 def _pypi_source_url(pkg_name, version=None, suffix=None):
     """
@@ -69,7 +69,8 @@ def _pypi_source_url(pkg_name, version=None, suffix=None):
     full_pkg_name = None
     md5_digest = None
     try:
-        pkg_json = json.loads(urlopen(metadata_url).read().decode())
+        rc, out, err = _urlhelper(metadata_url)
+        pkg_json = json.loads(out.decode())
         if not version:
             version = pkg_json['info']['version']
         release = pkg_json['releases'][version]
@@ -399,26 +400,20 @@ def pyspec(module, version=_tag('version', None), release=_tag('release', '1'),
             rmtree(builddir)
 
         filepath = rpm.expandMacro("%{_sourcedir}/" + filename)
-        blocksize = 65536
-        md5 = hashlib.md5()
-        if not (os.path.exists(filepath) and os.path.isfile(filepath) and os.stat(filepath).st_size != 0):
-            download = urlopen(url)
-            f = open(filepath, "wb")
-            buf = download.read(blocksize)
-            while len(buf) > 0:
-                md5.update(buf)
-                f.write(buf)
-                buf = download.read(blocksize)
-            f.close()
-        elif md5_digest:
+        if not (os.path.exists(filepath) and os.path.isfile(filepath) \
+                and os.stat(filepath).st_size != 0):
+            rc, out, err = _urlhelper(url, filepath)
+        if md5_digest:
+            blocksize = 65536
+            md5 = hashlib.md5()
             f = open(filepath, "rb")
             buf = f.read(blocksize)
             while len(buf) > 0:
                 md5.update(buf)
                 buf = f.read(blocksize)
-
-        if md5_digest != md5.hexdigest():
-            raise Exception("MD5 Sums do not match. Wanted: '%s' Got: '%s'" % (md5_digest, md5.hexdigest()))
+            f.close()
+            if md5_digest != md5.hexdigest():
+                raise Exception("MD5 Sums do not match. Wanted: '%s' Got: '%s'" % (md5_digest, md5.hexdigest()))
 
         uncompress = Popen(rpm.expandMacro("%{uncompress: " + filepath + "}").split(), stdout=PIPE)
         if filepath.endswith("zip"):
