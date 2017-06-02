@@ -175,9 +175,14 @@ rpmlibexec_PROGRAMS +=	rpmdeps
 rpmdeps_SOURCES =	tools/rpmdeps.c
 rpmdeps_LDADD =		lib/librpm.la rpmio/librpmio.la build/librpmbuild.la @WITH_POPT_LIB@
 
+rpmlibexec_PROGRAMS +=	rpmdbchk
+rpmdbchk_SOURCES =	tools/rpmdbchk.c
+rpmdbchk_LDADD =	lib/librpm.la rpmio/librpmio.la
+
 bin_PROGRAMS +=		rpmgraph
 rpmgraph_SOURCES =	tools/rpmgraph.c
 rpmgraph_LDADD =	lib/librpm.la rpmio/librpmio.la @WITH_POPT_LIB@
+
 
 dist_bin_SCRIPTS =	scripts/gendiff
 
