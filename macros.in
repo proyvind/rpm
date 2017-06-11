@@ -88,6 +88,7 @@
 %__ranlib		@RANLIB@
 %__remsh		%{__rsh}
 %__strip		@__STRIP@
+%__parallel		@__PARALLEL@
 
 # XXX avoid failures if tools are not installed when rpm is built.
 %__libtoolize		libtoolize
@@ -180,7 +181,7 @@
 #	the script.  See the script for details.
 #
 %__debug_install_post   \
-   %{_rpmconfigdir}/find-debuginfo.sh %{?_missing_build_ids_terminate_build:--strict-build-id} %{?_find_debuginfo_opts} "%{_builddir}/%{?buildsubdir}"\
+   %{?__parallel:echo} %{_rpmconfigdir}/find-debuginfo.sh %{?_missing_build_ids_terminate_build:--strict-build-id} %{?_find_debuginfo_opts} "%{_builddir}/%{?buildsubdir}"\
 %{nil}
 
 #	Template for debug information sub-package.
