@@ -89,11 +89,11 @@
 	--joblog=%(mktemp -p %{_tmppath} rpm.parallel_joblog.XXXX)
 
 %__spec_install_post\
-    %{?!__parallel:$} ( \
+    %{?!__parallel:$} (%{shrink: \
     %{?__debug_package:%{__debug_install_post}} \
     %{__arch_install_post} \
     %{__os_install_post} \
-    ) %{?__parallel:| %{__parallel} %{?!__parallel_args:%{_smp_mflags} --halt soon,fail=1 --will-cite -r}%{?__parallel_args}} \
+    }) %{?__parallel:| %{__parallel} %{?!__parallel_args:%{_smp_mflags} --halt soon,fail=1 --will-cite -r}%{?__parallel_args}} \
 %{nil}
 
 @apple@#---------------------------------------------------------------------
