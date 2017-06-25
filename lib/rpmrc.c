@@ -42,6 +42,10 @@
 static const char * defrcfiles = NULL;
 const char * macrofiles = NULL;
 
+#if defined(WITH_LIBCPUINFO)
+extern rpmds cpuinfoP;
+#endif
+
 typedef struct machCacheEntry_s {
     char * name;
     int count;
@@ -1800,6 +1804,24 @@ int rpmShowRC(FILE * fp)
     }
     ds = rpmdsFree(ds);
     fprintf(fp, "\n");
+
+#if defined(WITH_LIBCPUINFO)
+    if(cpuinfoP == NULL)
+	rpmdsCpuinfo(&cpuinfoP);
+    if (cpuinfoP != NULL) {
+	fprintf(fp,
+		_("Features provided by current cpuinfo:\n"));
+	cpuinfoP = rpmdsInit(cpuinfoP);
+	while (rpmdsNext(cpuinfoP) >= 0) {
+	    const char * DNEVR = rpmdsDNEVR(cpuinfoP);
+	    if (DNEVR != NULL)
+		fprintf(fp, "    %s\n", DNEVR+2);
+	}
+	cpuinfoP = rpmdsFree(cpuinfoP);
+
+	fprintf(fp, "\n");
+    }
+#endif
 
     fprintf(fp, "Macro path: %s\n", macrofiles);
     fprintf(fp, "\n");

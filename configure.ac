@@ -953,6 +953,14 @@ if test "$with_dmalloc" = yes ; then
   LIBS="$LIBS -ldmalloc"
 fi
 
+# later..
+dnl # CPUInfo
+AC_ARG_WITH(libcpuinfo, [AS_HELP_STRING([--with-libcpuinfo],[build with cpuinfo() runtime deps, requiring libcpuinfo])])
+if test "$with_libcpuinfo" = yes ; then
+    AC_DEFINE(WITH_LIBCPUINFO, 1, [Built with libcpuinfo support?])
+    LIBS="$LIBS -lcpuinfo"
+fi
+
 user_with_uid0=$(awk -F: '$3==0 {print $1}' /etc/passwd)
 group_with_gid0=$(awk -F: '$3==0 {print $1}' /etc/group)
 AC_DEFINE_UNQUOTED([UID_0_USER],["$user_with_uid0"],[Get the user name having userid 0])

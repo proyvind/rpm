@@ -27,6 +27,8 @@ const char * const rpmEVR = VERSION;
 
 const int rpmFLAGS = RPMSENSE_EQUAL;
 
+rpmds cpuinfoP = NULL;
+
 #undef HASHTYPE
 #undef HTKEYTYPE
 #undef HTDATATYPE
@@ -621,6 +623,21 @@ retry:
 	
 	if (tsmem->rpmlib != NULL && rpmdsSearch(tsmem->rpmlib, dep) >= 0) {
 	    rpmdsNotify(dep, "(rpmlib provides)", rc);
+	    goto exit;
+	}
+	goto unsatisfied;
+    }
+
+    if (dsflags & RPMSENSE_PROBE) {
+	static int oneshot = -1;
+
+	if (oneshot && cpuinfoP == NULL)
+	    oneshot = rpmdsCpuinfo(&cpuinfoP);
+	if (cpuinfoP == NULL)
+	    goto unsatisfied;
+
+	if (rpmdsSearch(cpuinfoP, dep) >= 0) {
+	    rpmdsNotify(dep, _("(cpuinfo provides)"), rc);
 	    goto exit;
 	}
 	goto unsatisfied;

@@ -87,6 +87,17 @@ int rpmdsCompareIndex(rpmds A, int aix, rpmds B, int bix);
  */
 RPM_GNUC_INTERNAL
 rpmds rpmdsFilterTi(rpmds ds, int ti);
+
+#if defined(WITH_LIBCPUINFO)
+/** \ingroup rpmds
+ * Load cpu featureu provides into a dependency set.
+ * @retval *dsp		(loaded) depedency set
+ * @return		0 on success
+ */
+RPM_GNUC_INTERNAL
+int rpmdsCpuinfo(rpmds * dsp);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
